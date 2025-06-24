@@ -12,6 +12,9 @@ path = os.path.normpath(os.path.join(os.path.join(os.path.abspath(__file__)), '.
 sys.path.append(path)
 from torch.utils.data import Dataset
 from model.encoder import Encoder
+from torchvision import transforms
+# pil to tensor
+to_tensor = transforms.ToTensor()
 
 
 class MIMICChunkLoader(Dataset):
@@ -34,7 +37,7 @@ class MIMICChunkLoader(Dataset):
         payload = {'image_path': self.image_path[index],
                    'labels': self.labels[index],
                    'findings': self.findings[index],
-                   'image': self.image_tensor[index],
+                   'image': to_tensor(self.image_tensor[index]),
                    'image_name': self.image_name[index],
                    'id': self.id[index]}
         return payload
@@ -50,6 +53,7 @@ class MIMICChunkLoader(Dataset):
             data['id'].append(d['id'])
             data['image'].append(d['image'])
 
+        data['image'] = torch.stack(data['image'])
         return data
 
     def get_loader(self, batch_size):
@@ -77,7 +81,6 @@ if __name__ == '__main__':
 
     config = json.load(open(args.config, 'r'))
     model = Encoder(config)
-    model.load_model()
 
     os.makedirs(args.output, exist_ok=True)
 
@@ -93,7 +96,8 @@ if __name__ == '__main__':
         for batch in tqdm(loader):
             logging.debug('batch size: {}'.format(len(batch['id'])))
             with torch.no_grad():
-                image_embeddings = model.visual_embedding(batch['image']).detach().cpu()
+                logging.debug('image shape {}'.format(batch['image'].shape))
+                image_embeddings = model(batch['image']).detach().cpu()
                 grid_embeddings = model.grid_features(batch['image']).detach().cpu()
                 data['image_embeddings'] += image_embeddings
                 data['grid_embeddings'] += grid_embeddings

@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
                 # model checkpointing
                 model_dict = {'epoch': epoch,
-                              'model_state_dict': encoder.state_dict(),
+                              'model_state_dict': encoder.vision.state_dict(),
                               'optimizer_state_dict': optim.state_dict(),
                               'loss': training_loss[-1]}
 
