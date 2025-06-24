@@ -7,11 +7,37 @@ import sys
 import pickle
 from tqdm import tqdm
 import torch
+from PIL import Image
+import cv2
+from torchvision import transforms
 
 # path trick
 path = os.path.normpath(os.path.join(os.path.join(os.path.abspath(__file__)), '..', '..'))
 sys.path.append(path)
-from models.foundation_models import prepare_image
+from model.encoder import Encoder
+# pil to tensor
+to_tensor = transforms.ToTensor()
+
+
+def prepare_image(image_path, dim, resize):
+    # opencv works better when reading big images
+    # crop image to 1x1 ratio and then resize
+    image = cv2.imread(image_path, cv2.IMREAD_COLOR_RGB)
+    image = Image.fromarray(image).convert('RGB')
+    h, w = image.size
+
+    if h != w:
+        min_dim = min(h, w)
+        center = (w // 2, h // 2)
+        image = image.crop((center[0] - min_dim // 2, center[1] - min_dim // 2,
+                            center[0] + min_dim // 2, center[1] + min_dim // 2))
+
+    if resize and image.size[0] > dim:
+        logger.debug('resizing image, original size: {}x{}'.format(image.size[0], image.size[1]))
+        image = image.resize((dim, dim))
+        logger.debug('resize image: {}x{}'.format(image.size[0], image.size[1]))
+
+    return image
 
 
 if __name__ == '__main__':

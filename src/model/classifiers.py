@@ -1,5 +1,7 @@
-import torch
 from torch import nn
+mimic_classifier_list = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Enlarged Cardiomediastinum',
+                         'Fracture', 'Lung Lesion', 'Lung Opacity', 'No Finding', 'Pleural Effusion', 'Pleural Other',
+                         'Pneumonia', 'Pneumothorax', 'Support Devices']
 
 
 class LinearClassifier(nn.Module):
@@ -25,24 +27,6 @@ class MultiClassifier(nn.Module):
         return y
 
 
-if __name__ == '__main__':
-    classification_list = ['Atelectasis',
-                           'Cardiomegaly',
-                           'Consolidation',
-                           'Edema',
-                           'Enlarged Cardiomediastinum',
-                           'Fracture',
-                           'Lung Lesion',
-                           'Lung Opacity',
-                           'Pleural Effusion',
-                           'Pleural Other',
-                           'Pneumonia',
-                           'Pneumothorax']
 
-    multi = MultiClassifier(classification_list, 768, 3)
-    x = torch.rand((1, 768))
-    print(x.shape)
-    y = multi(x)
-    # print(y.shape)
-    print(y)
+
 
