@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -10,3 +11,4 @@ class SimpleMapper(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+

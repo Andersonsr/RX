@@ -14,8 +14,7 @@ sys.path.append(path)
 from util import learnable_parameters, model_size, plot_curves
 from model.encoder import Encoder
 from model.classifiers import MultiClassifier, mimic_classifier_list
-from data.dataloaders import MIMICLoader
-
+from data.mimic_dataloader import MimicDataloader
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train encoder')

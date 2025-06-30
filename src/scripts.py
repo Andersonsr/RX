@@ -8,32 +8,14 @@ import logging
 import time
 import gc
 import json
+import numpy as np
+from PIL import Image
 from model.classifiers import mimic_classifier_list
 # pil to tensor
 to_tensor = transforms.ToTensor()
 
 
-def chunks_pil_to_tensor(dirname):
-    assert False, 'dont use me, chunks got 5 times larger'
-    assert os.path.exists(dirname), '{} does not exist'.format(dirname)
-    chunks = glob.glob(dirname+'/chunk*.pkl')
-    assert len(chunks) > 0, 'No chunks found at {}'.format(dirname)
-    for i, chunk in enumerate(chunks):
-        print('chunk {}/{}'.format(i, len(chunks)))
-        tensors = []
-        with open(chunk, 'rb') as f:
-            chunk_data = pickle.load(f)
-            for image in tqdm(chunk_data['image_tensor']):
-                tensors.append(to_tensor(image))
-
-            chunk_data['image_tensor'] = tensors
-            new_data = chunk_data
-
-        with open(chunk, 'wb') as f:
-            pickle.dump(new_data, f)
-
-
-def mimic_chunk_labels(filename):
+def fix_mimic_chunk_labels(filename):
     '''
     edit chunk file with reorganized labels
     :param filename: chunk pkl file to edit
@@ -85,9 +67,49 @@ def count_length(dirname):
         json.dump(cache, f)
 
 
-if __name__ == '__main__':
-    chunks =glob.glob('E:\\datasets\\mimic\\mimic_train_256\\chunks\\chunk*.pkl')
-    for chunk in tqdm(chunks):
-        mimic_chunk_labels(chunk)
-    # count_length('E:\\datasets\\mimic\\mimic_dev_224\\chunks')
+def mimic_stats():
+    studs = glob.glob('E:\\datasets\\mimic\\mimic-cxr-jpg\\2.1.0\\files\\*\\*\\*')
+    images_per_study = []
+    dim = [1]
+    for study in tqdm(studs):
+        images = glob.glob(os.path.join(study, '*.jpg'))
+        images_per_study.append(len(images))
+        for image in images:
+            image = Image.open(image)
+            w, h = image.size
+            dim.append(min(w, h))
 
+    dict = {}
+    print('images per study')
+    uniques, counts = np.unique(images_per_study, return_counts=True)
+    for unique, count in zip(uniques, counts):
+        print('{}: {}'.format(unique, count))
+        dict[str(unique)] = int(count)
+
+    print('total: {}'.format(np.sum(counts)))
+    print()
+    print('image dimension')
+    print('average image dimension: {}'.format(np.mean(dim)))
+    print('std image dimension: {}'.format(np.std(dim)))
+    print('median image dimension: {}'.format(np.median(dim)))
+    print('max image dimension: {}'.format(np.max(dim)))
+    print('min image dimension: {}'.format(np.min(dim)))
+
+    with open('mimic_stats.json', 'w') as f:
+        json.dump({'images_per_study': dict, 'dimensions': dim}, f, indent=2)
+
+
+if __name__ == '__main__':
+    root = 'E:\\datasets\\mimic\\mimic-cxr-jpg\\2.1.0\\'
+    downloaded_files = glob.glob(os.path.join(root, 'files\\*\\*\\*\\*.jpg'), recursive=True)
+    print(downloaded_files[0])
+    to_download = []
+    files = open('E:\\datasets\\mimic\\IMAGE_FILENAMES', 'r')
+    for filename in tqdm(files):
+        if not os.path.exists(os.path.join(root, filename.replace('\n', ''))):
+            to_download.append(filename)
+
+    print('to download', len(to_download))
+    print('downloaded files: ', len(downloaded_files))
+
+    open('E:\\datasets\\mimic\\to_download', 'w').write(''.join(to_download))

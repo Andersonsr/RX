@@ -7,35 +7,38 @@ import timm
 import open_clip
 
 
-def create_model(config):
-    if 'encoder_config' in config.keys():
-        # finetuned model
-        encoder_config = config['encoder_config']
-        ck = torch.load(config['checkpoint_path'])
-
-        if encoder_config['package'] == 'timm':
-            model = timm.create_model(config['model_name'], pretrained=True, num_classes=0)
-        elif encoder_config['package'] == 'openclip':
-            model, _ = create_model_from_pretrained('hf-hub:timm/ViT-B-16-SigLIP2-256')
-            model = model.visual
-        else:
-            raise NotImplementedError
-
-        if config['lora']:
-            # TODO: apply LoRA
-            raise NotImplementedError
-
-        model.load_state_dict(ck['model_state_dict'])
-        return model
-
-    # loading pretrained model
+def model_from_config(config):
     if config['package'] == 'timm':
-        return timm.create_model(config['model_name'], pretrained=True, num_classes=0)
-    if config['package'] == 'openclip':
-        model, _ = create_model_from_pretrained('hf-hub:timm/ViT-B-16-SigLIP2-256')
-        return model.visual
-    if config['package'] == 'transformers':
-        return AutoModel.from_pretrained(config['model_name'])
+        model = timm.create_model(config['model_name'], pretrained=True, num_classes=0)
+
+    elif config['package'] == 'openclip':
+        model, _ = create_model_from_pretrained(config['model_name'])
+        model = model.visual
+
+    elif config['package'] == 'transformers':
+        model = AutoModel.from_pretrained(config['model_name'])
+
+    else:
+        raise ValueError(f'Unknown package: {config["package"]}')
+
+    if 'lora' in config and config['lora']:
+        # TODO: apply LoRA
+        raise NotImplementedError
+
+    return model
+
+
+def create_model(config):
+    # fine-tuned local model
+    if 'encoder_config' in config.keys():
+        model = model_from_config(config['encoder_config'])
+        checkpoint = torch.load(config['checkpoint_path'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+    else:
+        model = model_from_config(config)
+
+    return model
 
 
 class Encoder(nn.Module):
@@ -46,8 +49,9 @@ class Encoder(nn.Module):
             config = config['encoder_config']
 
         self.input_size = config['input_size']
-        self.output_dim = config['output_dim']
+        self.output_dim = config['hidden_size']
         self.package = config['package']
+        self.lora = config['lora'] if 'lora' in config.keys() else False
 
     def forward(self, x):
         if self.package == 'timm' or self.package == 'openclip':
@@ -75,20 +79,22 @@ class Encoder(nn.Module):
 
 if __name__ == '__main__':
     siglip_512 = {'input_size': 512,
-              'output_dim': 768,
+              'hidden_size': 768,
               'model_name': 'vit_base_patch16_siglip_512',
               'package': 'timm'}
 
     siglip2_256 = {'input_size': 256,
-                   'output_dim': 768,
+                   'hidden_size': 768,
                    'model_name': 'hf-hub:timm/ViT-B-16-SigLIP2-256',
                    'package': 'openclip'}
 
     dinov2 = {'input_size': 224,
-              'output_dim': 768,
+              'hidden_size': 768,
               'model_name': 'facebook/dinov2-with-registers-base',
               'package': 'transformers'}
 
     cfg = json.load(open('D:\\modelos_v2\\encoder\\class3_siglip256\\experiment.json'))
     vision = Encoder(cfg)
-    
+    x = torch.randn(1, 3, 256, 256)
+    print(vision(x).shape)
+
